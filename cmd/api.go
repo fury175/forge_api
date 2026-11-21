@@ -11,6 +11,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
+	"github.com/fury175/forge_api/internal/apperrors"
 	"github.com/fury175/forge_api/internal/logger"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -34,6 +35,7 @@ func (app *application) mount() http.Handler {
 	}
 
 	api := humachi.New(r, humaConfig)
+	api.UseMiddleware(apperrors.Middleware)
 
 	// routes
 	huma.Get(api, "/api/v1/health", app.healthCheckHandler, huma.OperationTags("ops"))
