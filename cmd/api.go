@@ -11,8 +11,10 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
+	repo "github.com/fury175/forge_api/internal/adapters/postgresql/sqlc"
 	"github.com/fury175/forge_api/internal/apperrors"
 	"github.com/fury175/forge_api/internal/logger"
+	"github.com/fury175/forge_api/internal/modules/auth"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
@@ -36,9 +38,16 @@ func (app *application) mount() http.Handler {
 
 	api := humachi.New(r, humaConfig)
 	api.UseMiddleware(apperrors.Middleware)
+	prefix := huma.NewGroup(api, "/v1")
 
-	// routes
-	huma.Get(api, "/api/v1/health", app.healthCheckHandler, huma.OperationTags("ops"))
+	ops := huma.NewGroup(prefix, "")
+	ops.UseMiddleware(app.basicAuthMiddleware(api))
+	huma.Get(ops, "/health", app.healthCheckHandler, huma.OperationTags("ops"))
+
+	authService := auth.NewService(repo.New(app.db), app.db, app.mailer, app.config.env, app.config.frontendUrl)
+	authHandler := auth.NewHandler(authService)
+	huma.Post(prefix, "/auth/sign-in", authHandler.LoginUser, huma.OperationTags("auth"))
+	huma.Post(prefix, "/auth/sign-up", authHandler.Register, huma.OperationTags("auth"))
 
 	return r
 }
